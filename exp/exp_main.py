@@ -54,9 +54,10 @@ class Exp_Main(Exp_Basic):
         total_loss = []
         self.model.eval()
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
+            for i, (batch_x, batch_y, target, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float()
+                target = target.float()
 
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
@@ -84,10 +85,10 @@ class Exp_Main(Exp_Basic):
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 f_dim = -1 if self.args.features == 'MS' else 0
                 outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                # batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
 
                 pred = outputs.detach().cpu()
-                true = batch_y.detach().cpu()
+                true = target[:, -self.args.pred_len:].detach().cpu()
 
                 loss = criterion(pred, true)
 
@@ -123,12 +124,12 @@ class Exp_Main(Exp_Basic):
 
             self.model.train()
             epoch_time = time.time()
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(train_loader):
+            for i, (batch_x, batch_y, target, batch_x_mark, batch_y_mark) in enumerate(train_loader):
                 iter_count += 1
                 model_optim.zero_grad()
                 batch_x = batch_x.float().to(self.device)
-
                 batch_y = batch_y.float().to(self.device)
+                target = target.float().to(self.device)
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
@@ -149,8 +150,8 @@ class Exp_Main(Exp_Basic):
 
                         f_dim = -1 if self.args.features == 'MS' else 0
                         outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                        batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                        loss = criterion(outputs, batch_y)
+                        # batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                        loss = criterion(outputs, target[:, -self.args.pred_len:])
                         train_loss.append(loss.item())
                 else:
                     if 'Linear' in self.args.model:
@@ -164,8 +165,8 @@ class Exp_Main(Exp_Basic):
                     # print(outputs.shape,batch_y.shape)
                     f_dim = -1 if self.args.features == 'MS' else 0
                     outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                    batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                    loss = criterion(outputs, batch_y)
+                    # batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                    loss = criterion(outputs, target[:, -self.args.pred_len:])
                     train_loss.append(loss.item())
 
                 if (i + 1) % 100 == 0:
@@ -225,13 +226,13 @@ class Exp_Main(Exp_Basic):
 
         self.model.eval()
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
+            for i, (batch_x, batch_y, target, batch_x_mark, batch_y_mark) in enumerate(test_loader):
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float().to(self.device)
-
+                target = target.float().to(self.device)
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
-
+                
                 # decoder input
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
                 dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
@@ -258,12 +259,12 @@ class Exp_Main(Exp_Basic):
                 f_dim = -1 if self.args.features == 'MS' else 0
                 # print(outputs.shape,batch_y.shape)
                 outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                # batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
                 outputs = outputs.detach().cpu().numpy()
-                batch_y = batch_y.detach().cpu().numpy()
+                target = target[:, -self.args.pred_len:].detach().cpu().numpy()
 
                 pred = outputs  # outputs.detach().cpu().numpy()  # .squeeze()
-                true = batch_y  # batch_y.detach().cpu().numpy()  # .squeeze()
+                true = target  # batch_y.detach().cpu().numpy()  # .squeeze()
 
                 preds.append(pred)
                 trues.append(true)
@@ -278,8 +279,12 @@ class Exp_Main(Exp_Basic):
             test_params_flop((batch_x.shape[1],batch_x.shape[2]))
             exit()
             
-        preds = np.concatenate(preds, axis=0)
-        trues = np.concatenate(trues, axis=0)
+        preds = np.concatenate(preds, axis=0).reshape(-1, 1)
+        trues = np.concatenate(trues, axis=0).reshape(-1, 1)
+        # if test_data.scale:
+        #     preds = test_data.inverse_transform(preds)
+        #     trues = test_data.inverse_transform(trues)
+        visual(trues[:, -1], preds[:, -1], os.path.join(folder_path, 'test.png'))
         inputx = np.concatenate(inputx, axis=0)
 
         # result save
@@ -304,7 +309,8 @@ class Exp_Main(Exp_Basic):
 
     def predict(self, setting, load=False):
         pred_data, pred_loader = self._get_data(flag='pred')
-
+        print(len(pred_data))
+        print(len(pred_loader))
         if load:
             path = os.path.join(self.args.checkpoints, setting)
             best_model_path = path + '/' + 'checkpoint.pth'
@@ -314,9 +320,11 @@ class Exp_Main(Exp_Basic):
 
         self.model.eval()
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(pred_loader):
+            for i, (batch_x, batch_y, target, batch_x_mark, batch_y_mark) in enumerate(pred_loader):
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float()
+                target = target.float()
+
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
@@ -341,13 +349,13 @@ class Exp_Main(Exp_Basic):
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                         else:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                pred = outputs.detach().cpu().numpy()  # .squeeze()
+                pred = outputs[:, -self.args.pred_len:, -1:].detach().cpu().numpy()  # .squeeze()
                 preds.append(pred)
 
-        preds = np.array(preds)
+        # preds = np.array(preds)
         preds = np.concatenate(preds, axis=0)
-        if (pred_data.scale):
-            preds = pred_data.inverse_transform(preds)
+        # if (pred_data.scale):
+            # preds = pred_data.inverse_transform(preds)
         
         # result save
         folder_path = './results/' + setting + '/'

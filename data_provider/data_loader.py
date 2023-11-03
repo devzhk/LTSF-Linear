@@ -230,7 +230,7 @@ class Dataset_Custom(Dataset):
         cols = list(df_raw.columns)
         if self.features == 'S':
             cols.remove(self.target)
-        cols.remove('date')
+        # cols.remove('date')
         # print(cols)
         num_train = int(len(df_raw) * (0.7 if not self.train_only else 1))
         num_test = int(len(df_raw) * 0.2)
@@ -241,8 +241,8 @@ class Dataset_Custom(Dataset):
         border2 = border2s[self.set_type]
 
         if self.features == 'M' or self.features == 'MS':
-            df_raw = df_raw[['date'] + cols]
-            cols_data = df_raw.columns[1:]
+            df_raw = df_raw[cols]
+            cols_data = df_raw.columns[1:-1]
             df_data = df_raw[cols_data]
         elif self.features == 'S':
             df_raw = df_raw[['date'] + cols + [self.target]]
@@ -270,7 +270,7 @@ class Dataset_Custom(Dataset):
             data_stamp = data_stamp.transpose(1, 0)
 
         self.data_x = data[border1:border2]
-        self.data_y = data[border1:border2]
+        self.data_y = df_raw[[self.target]].values[border1:border2]
         self.data_stamp = data_stamp
 
     def __getitem__(self, index):
@@ -280,11 +280,13 @@ class Dataset_Custom(Dataset):
         r_end = r_begin + self.label_len + self.pred_len
 
         seq_x = self.data_x[s_begin:s_end]
-        seq_y = self.data_y[r_begin:r_end]
+        seq_y = self.data_x[r_begin:r_end]
+        target_y = self.data_y[r_begin:r_end]
+
         seq_x_mark = self.data_stamp[s_begin:s_end]
         seq_y_mark = self.data_stamp[r_begin:r_end]
 
-        return seq_x, seq_y, seq_x_mark, seq_y_mark
+        return seq_x, seq_y, target_y, seq_x_mark, seq_y_mark
 
     def __len__(self):
         return len(self.data_x) - self.seq_len - self.pred_len + 1
@@ -334,14 +336,14 @@ class Dataset_Pred(Dataset):
             cols = list(df_raw.columns)
             self.cols = cols.copy()
             cols.remove('date')
-        if self.features == 'S':
-            cols.remove(self.target)
-        border1 = len(df_raw) - self.seq_len
+
+        cols.remove(self.target)
+        border1 = 0              # len(df_raw) - self.seq_len
         border2 = len(df_raw)
 
         if self.features == 'M' or self.features == 'MS':
-            df_raw = df_raw[['date'] + cols]
-            cols_data = df_raw.columns[1:]
+            df_raw = df_raw[['date'] + cols + [self.target]]
+            cols_data = df_raw.columns[1:-1]
             df_data = df_raw[cols_data]
         elif self.features == 'S':
             df_raw = df_raw[['date'] + cols + [self.target]]
@@ -373,14 +375,15 @@ class Dataset_Pred(Dataset):
             data_stamp = data_stamp.transpose(1, 0)
 
         self.data_x = data[border1:border2]
-        if self.inverse:
-            self.data_y = df_data.values[border1:border2]
-        else:
-            self.data_y = data[border1:border2]
+        self.data_y = df_raw[[self.target]].values[border1:border2]
+        # if self.inverse:
+        #     self.data_y = df_data.values[border1:border2]
+        # else:
+        #     self.data_y = data[border1:border2]
         self.data_stamp = data_stamp
 
     def __getitem__(self, index):
-        s_begin = index
+        s_begin = index * self.pred_len
         s_end = s_begin + self.seq_len
         r_begin = s_end - self.label_len
         r_end = r_begin + self.label_len + self.pred_len
@@ -389,14 +392,15 @@ class Dataset_Pred(Dataset):
         if self.inverse:
             seq_y = self.data_x[r_begin:r_begin + self.label_len]
         else:
-            seq_y = self.data_y[r_begin:r_begin + self.label_len]
+            seq_y = self.data_x[r_begin:r_begin + self.label_len]
+        target_y = self.data_y[r_begin:r_end]
         seq_x_mark = self.data_stamp[s_begin:s_end]
         seq_y_mark = self.data_stamp[r_begin:r_end]
 
-        return seq_x, seq_y, seq_x_mark, seq_y_mark
+        return seq_x, seq_y, target_y, seq_x_mark, seq_y_mark
 
     def __len__(self):
-        return len(self.data_x) - self.seq_len + 1
+        return (len(self.data_x) - self.seq_len + 1) // self.pred_len
 
     def inverse_transform(self, data):
         return self.scaler.inverse_transform(data)
