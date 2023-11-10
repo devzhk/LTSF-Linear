@@ -48,23 +48,23 @@ class Exp_Main(Exp_Basic):
 
     def _select_criterion(self):
         criterion = nn.MSELoss()
+        # criterion = nn.L1Loss()
         return criterion
 
     def vali(self, vali_data, vali_loader, criterion):
         total_loss = []
         self.model.eval()
         with torch.no_grad():
-            for i, (batch_x, batch_y, target, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
+            for i, (batch_x, target, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
                 batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float()
-                target = target.float()
+                target = target.float().to(self.device)
 
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
                 # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+                dec_inp = torch.zeros_like(target[:, -self.args.pred_len:, :]).float()
+                dec_inp = torch.cat([target[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
@@ -124,18 +124,17 @@ class Exp_Main(Exp_Basic):
 
             self.model.train()
             epoch_time = time.time()
-            for i, (batch_x, batch_y, target, batch_x_mark, batch_y_mark) in enumerate(train_loader):
+            for i, (batch_x, target, batch_x_mark, batch_y_mark) in enumerate(train_loader):
                 iter_count += 1
                 model_optim.zero_grad()
                 batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float().to(self.device)
                 target = target.float().to(self.device)
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
                 # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+                dec_inp = torch.zeros_like(target[:, -self.args.pred_len:, :]).float()
+                dec_inp = torch.cat([target[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
 
                 # encoder - decoder
                 if self.args.use_amp:
@@ -161,7 +160,7 @@ class Exp_Main(Exp_Basic):
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                             
                         else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark, batch_y)
+                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
                     # print(outputs.shape,batch_y.shape)
                     f_dim = -1 if self.args.features == 'MS' else 0
                     outputs = outputs[:, -self.args.pred_len:, f_dim:]
@@ -226,16 +225,15 @@ class Exp_Main(Exp_Basic):
 
         self.model.eval()
         with torch.no_grad():
-            for i, (batch_x, batch_y, target, batch_x_mark, batch_y_mark) in enumerate(test_loader):
+            for i, (batch_x, target, batch_x_mark, batch_y_mark) in enumerate(test_loader):
                 batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float().to(self.device)
                 target = target.float().to(self.device)
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
                 
                 # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+                dec_inp = torch.zeros_like(target[:, -self.args.pred_len:, :]).float()
+                dec_inp = torch.cat([target[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
@@ -317,20 +315,25 @@ class Exp_Main(Exp_Basic):
             self.model.load_state_dict(torch.load(best_model_path))
 
         preds = []
+        ground_truth = []
 
         self.model.eval()
+        start_tokens = None
         with torch.no_grad():
-            for i, (batch_x, batch_y, target, batch_x_mark, batch_y_mark) in enumerate(pred_loader):
+            for i, (batch_x, target, batch_x_mark, batch_y_mark) in enumerate(pred_loader):
+                if start_tokens is None:
+                    start_tokens = torch.ones([target.shape[0], self.args.label_len, target.shape[2]]).float().to(self.device)
+                
                 batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float()
+                
                 target = target.float()
 
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
                 # decoder input
-                dec_inp = torch.zeros([batch_y.shape[0], self.args.pred_len, batch_y.shape[2]]).float().to(batch_y.device)
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+                dec_inp = torch.zeros([target.shape[0], self.args.pred_len, target.shape[2]]).float().to(self.device)
+                dec_inp = torch.cat([start_tokens, dec_inp], dim=1).float().to(self.device)
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
@@ -350,19 +353,27 @@ class Exp_Main(Exp_Basic):
                         else:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 pred = outputs[:, -self.args.pred_len:, -1:].detach().cpu().numpy()  # .squeeze()
+                start_tokens = outputs[:, -self.args.label_len:, :]
                 preds.append(pred)
+                ground_truth.append(target[:, -self.args.pred_len:, :].numpy())
 
         # preds = np.array(preds)
         preds = np.concatenate(preds, axis=0)
+        ground_truths = np.concatenate(ground_truth, axis=0)
         # if (pred_data.scale):
             # preds = pred_data.inverse_transform(preds)
-        
+
+        save_data = {
+            'preds': preds,
+            'ground_truths': ground_truths,
+        }
+
         # result save
         folder_path = './results/' + setting + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
-        np.save(folder_path + 'real_prediction.npy', preds)
-        pd.DataFrame(np.append(np.transpose([pred_data.future_dates]), preds[0], axis=1), columns=pred_data.cols).to_csv(folder_path + 'real_prediction.csv', index=False)
+        np.savez(folder_path + 'real_pred.npz', **save_data)
+        # pd.DataFrame(np.append(np.transpose([pred_data.future_dates]), preds[0], axis=1), columns=pred_data.cols).to_csv(folder_path + 'real_prediction.csv', index=False)
 
         return

@@ -22,7 +22,7 @@ parser.add_argument('--model', type=str, required=True, default='Autoformer',
 # data loader
 parser.add_argument('--data', type=str, default='custom', help='dataset type')
 parser.add_argument('--root_path', type=str, default='../fatigue/data', help='root path of the data file')
-parser.add_argument('--data_path', type=str, default='Subject_1-clean-Biking.csv', help='data file')
+parser.add_argument('--data_path', type=str, default='Subject_1-cleaned-Biking.csv', help='data file')
 parser.add_argument('--features', type=str, default='MS',
                     help='forecasting task, options:[M, S, MS]; M:multivariate predict multivariate, S:univariate predict univariate, MS:multivariate predict univariate')
 parser.add_argument('--target', type=str, default='Fatigue level', help='target feature in S or MS task')
@@ -31,18 +31,18 @@ parser.add_argument('--freq', type=str, default='s',
 parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
 
 # forecasting task
-parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
-parser.add_argument('--label_len', type=int, default=48, help='start token length')
-parser.add_argument('--pred_len', type=int, default=96, help='prediction sequence length')
+parser.add_argument('--seq_len', type=int, default=64, help='input sequence length')
+parser.add_argument('--label_len', type=int, default=4, help='start token length')
+parser.add_argument('--pred_len', type=int, default=64, help='prediction sequence length')
 
 
 # DLinear
 parser.add_argument('--individual', action='store_true', default=False, help='DLinear: a linear layer for each variate(channel) individually')
 # Formers 
 parser.add_argument('--embed_type', type=int, default=0, help='0: default 1: value embedding + temporal embedding + positional embedding 2: value embedding + temporal embedding 3: value embedding + positional embedding 4: value embedding')
-parser.add_argument('--enc_in', type=int, default=11, help='encoder input size') # DLinear with --individual, use this hyperparameter as the number of channels
-parser.add_argument('--dec_in', type=int, default=11, help='decoder input size')
-parser.add_argument('--c_out', type=int, default=7, help='output size')
+parser.add_argument('--enc_in', type=int, default=13, help='encoder input size') # DLinear with --individual, use this hyperparameter as the number of channels
+parser.add_argument('--dec_in', type=int, default=1, help='decoder input size')
+parser.add_argument('--c_out', type=int, default=1, help='output size')
 parser.add_argument('--d_model', type=int, default=512, help='dimension of model')
 parser.add_argument('--n_heads', type=int, default=8, help='num of heads')
 parser.add_argument('--e_layers', type=int, default=2, help='num of encoder layers')
