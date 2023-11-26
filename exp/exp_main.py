@@ -101,7 +101,7 @@ class Exp_Main(Exp_Basic):
         train_data, train_loader = self._get_data(flag='train')
         if not self.args.train_only:
             vali_data, vali_loader = self._get_data(flag='val')
-            test_data, test_loader = self._get_data(flag='test')
+            # test_data, test_loader = self._get_data(flag='test')
 
         path = os.path.join(self.args.checkpoints, setting)
         if not os.path.exists(path):
@@ -188,10 +188,10 @@ class Exp_Main(Exp_Basic):
             train_loss = np.average(train_loss)
             if not self.args.train_only:
                 vali_loss = self.vali(vali_data, vali_loader, criterion)
-                test_loss = self.vali(test_data, test_loader, criterion)
+                # test_loss = self.vali(test_data, test_loader, criterion)
 
-                print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
-                    epoch + 1, train_steps, train_loss, vali_loss, test_loss))
+                print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f}".format(
+                    epoch + 1, train_steps, train_loss, vali_loss))
                 early_stopping(vali_loss, self.model, path)
             else:
                 print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f}".format(
@@ -367,7 +367,8 @@ class Exp_Main(Exp_Basic):
             'preds': preds,
             'ground_truths': ground_truths,
         }
-
+        
+        
         # result save
         folder_path = './results/' + setting + '/'
         if not os.path.exists(folder_path):
@@ -375,5 +376,10 @@ class Exp_Main(Exp_Basic):
 
         np.savez(folder_path + 'real_pred.npz', **save_data)
         # pd.DataFrame(np.append(np.transpose([pred_data.future_dates]), preds[0], axis=1), columns=pred_data.cols).to_csv(folder_path + 'real_prediction.csv', index=False)
-
+        plt.plot(np.reshape(preds, (-1,)), label='Prediction')
+        plt.plot(np.reshape(ground_truths, (-1,)), label='Ground truth')
+        plt.legend()
+        title = 'Subject5-VR'
+        plt.title(f'{title}')
+        plt.savefig(os.path.join(folder_path, f'{title}.png'))
         return
