@@ -379,7 +379,7 @@ class Exp_Main(Exp_Basic):
         plt.plot(np.reshape(preds, (-1,)), label='Prediction')
         plt.plot(np.reshape(ground_truths, (-1,)), label='Ground truth')
         plt.legend()
-        title = 'Subject5-VR'
+        title = self.args.data_path.replace('.csv', '').replace('cleaned-', '')
         plt.title(f'{title}')
         plt.savefig(os.path.join(folder_path, f'{title}.png'))
         return
