@@ -21,7 +21,7 @@ parser.add_argument('--model', type=str, required=True, default='Autoformer',
 
 # data loader
 parser.add_argument('--data', type=str, default='custom', help='dataset type')
-parser.add_argument('--root_path', type=str, default='../fatigue/data', help='root path of the data file')
+parser.add_argument('--root_path', type=str, default='../data', help='root path of the data file')
 parser.add_argument('--data_path', type=str, default='Subject_1-cleaned-Biking.csv', help='data file')
 parser.add_argument('--features', type=str, default='MS',
                     help='forecasting task, options:[M, S, MS]; M:multivariate predict multivariate, S:univariate predict univariate, MS:multivariate predict univariate')

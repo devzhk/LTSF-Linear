@@ -1,7 +1,7 @@
 *.pyc
 *.pth
 *.png
-debug**
+debug.py
 
 
 **/__pycache__/**
@@ -12,3 +12,4 @@ results/
 logs/
 .DS_Store
 assets
+figs

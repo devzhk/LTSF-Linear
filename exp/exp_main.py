@@ -368,18 +368,20 @@ class Exp_Main(Exp_Basic):
             'ground_truths': ground_truths,
         }
         
-        
+        title = self.args.data_path.replace('.csv', '').replace('cleaned-', '')
         # result save
         folder_path = './results/' + setting + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
-        np.savez(folder_path + 'real_pred.npz', **save_data)
+        pred_dir = os.path.join(folder_path, 'predicts')
+        os.makedirs(pred_dir, exist_ok=True)   
+        np.savez(os.path.join(pred_dir, f'{title}.npz'), **save_data)
         # pd.DataFrame(np.append(np.transpose([pred_data.future_dates]), preds[0], axis=1), columns=pred_data.cols).to_csv(folder_path + 'real_prediction.csv', index=False)
         plt.plot(np.reshape(preds, (-1,)), label='Prediction')
         plt.plot(np.reshape(ground_truths, (-1,)), label='Ground truth')
         plt.legend()
-        title = self.args.data_path.replace('.csv', '').replace('cleaned-', '')
+
         plt.title(f'{title}')
         plt.savefig(os.path.join(folder_path, f'{title}.png'))
         return

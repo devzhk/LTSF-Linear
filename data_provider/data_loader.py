@@ -232,9 +232,9 @@ class Dataset_Custom(Dataset):
         self.train_only = train_only
 
         self.root_path = root_path
-        if scaler_path:
-            self.scaler = load(scaler_path)
-            print('Loaded scaler from', scaler_path)
+        # if scaler_path:
+            # self.scaler = load(scaler_path)
+            # print('Loaded scaler from', scaler_path)
         self.build_data()
 
     def build_data(self):
@@ -269,6 +269,8 @@ class Dataset_Custom(Dataset):
             df_data = df_raw[cols_data]
 
         if self.scale:
+            self.scaler = StandardScaler()
+            self.scaler.fit(df_data.values)
             data = self.scaler.transform(df_data.values)
         else:
             data = df_data.values
@@ -375,7 +377,7 @@ class Dataset_Pred(Dataset):
             df_data = df_raw[cols_data]
 
         if self.scale:
-            # self.scaler.fit(df_data.values)
+            self.scaler.fit(df_data.values)
             data = self.scaler.transform(df_data.values)
         else:
             data = df_data.values
@@ -427,3 +429,9 @@ class Dataset_Pred(Dataset):
 
     def inverse_transform(self, data):
         return self.scaler.inverse_transform(data)
+
+
+class Dataset_Classification(Dataset):
+    def __init__(self):
+        super().__init__()
+        
