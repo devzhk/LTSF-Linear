@@ -2,7 +2,7 @@
 *.pth
 *.png
 debug.py
-
+.vscode
 
 **/__pycache__/**
 dataset/

@@ -107,3 +107,7 @@ def test_params_flop(model,x_shape):
         # print('Params:' + params)
         print('{:<30}  {:<8}'.format('Computational complexity: ', macs))
         print('{:<30}  {:<8}'.format('Number of parameters: ', params))
+
+
+def cal_accuracy(y_pred, y_true):
+    return np.mean(y_pred == y_true)
