@@ -13,3 +13,7 @@ logs/
 .DS_Store
 assets
 figs
+exps
+wandb
+
+debug.py

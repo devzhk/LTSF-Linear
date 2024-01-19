@@ -3,10 +3,34 @@ import numpy as np
 import pandas as pd
 from joblib import dump, load
 from sklearn.preprocessing import StandardScaler
+from scipy.signal import butter, lfilter, iirnotch
 
 subject_list = [1, 2, 3, 4]
 activities = ['Biking', 'VR', 'Hand grip', 'Stroop']
 data_root = '../fatigue/data'
+
+
+def bandpass_filter(data, lowcut, highcut, fs, order=5):
+    nyquist = 0.5 * fs
+    low = lowcut / nyquist
+    high = highcut / nyquist
+    b, a = butter(order, [low, high], btype='band')
+    y = lfilter(b, a, data)
+    return y
+
+
+def z_score(arr, mean=None, std=None):
+    if mean is None or std is None:
+        mean = arr.mean()
+        std = arr.std()
+    return arr / std - mean / std
+
+
+def sub_mean(arr, mean=None):
+    if mean is None:
+        mean = arr.mean()
+    return arr - mean
+
 
 def read_data(data_path):
     df_raw = pd.read_csv(data_path)

@@ -1,40 +1,47 @@
 #%%
-import os
 import numpy as np
-import pandas as pd
+from scipy.signal import butter, lfilter
 import matplotlib.pyplot as plt
-
 #%%
-subject_id = 1
-activity = 'HandGrip'
-pred_dir = os.path.join('results', f'sub{subject_id}-{activity.lower()}_Transformer_custom_ftMS_sl64_ll4_pl64_dm512_nh8_el2_dl1_df2048_fc1_ebtimeF_dtTrue_results_0')
-pred_path = os.path.join(pred_dir, 'real_pred.npz')
+def butter_bandpass_filter(data, lowcut, highcut, fs, order=4):
+    nyquist = 0.5 * fs
+    low = lowcut / nyquist
+    high = highcut / nyquist
+    b, a = butter(order, [low, high], btype='band')
+    y = lfilter(b, a, data)
+    return y
 
-data = np.load(pred_path)
-preds = data['preds']
-ground_truths = data['ground_truths']
-# %%
-import matplotlib.pyplot as plt
-plt.plot(np.reshape(preds, (-1,)), label='Prediction')
-plt.plot(np.reshape(ground_truths, (-1,)), label='Ground truth')
+def plot_spectrum(data):
+    fft_results = np.fft.rfft(data)
+    plt.plot(np.abs(fft_results))
+    plt.show()
+#%%
+# Example usage:
+fs = 1000.0  # Sampling frequency (Hz)
+t = np.arange(0, 1, 1/fs)  # Time vector
+
+# Create a sample EMG signal (a sum of two sine waves)
+emg_signal = 0.7 * np.sin(2 * np.pi * 20 * t) + 0.3 * np.sin(2 * np.pi * 50 * t)
+
+# Bandpass filter parameters
+lowcut = 40  # Lower cutoff frequency
+highcut = 100  # Upper cutoff frequency
+
+# Apply bandpass filter
+filtered_emg = butter_bandpass_filter(emg_signal, lowcut, highcut, fs)
+
+# Plot the original and filtered signals
+plt.figure(figsize=(10, 6))
+plt.plot(t, emg_signal, label='Original EMG Signal')
+plt.plot(t, filtered_emg, label='Filtered EMG Signal (Bandpass)')
+plt.title('Original and Filtered EMG Signals')
+plt.xlabel('Time (s)')
+plt.ylabel('Amplitude')
 plt.legend()
-plt.title(f'Subject{subject_id}-{activity}')
-plt.savefig(f'prediction-sub{subject_id}-{activity}.png')
+plt.show()
+
 # %%
-img_dir = 'figs'
-os.makedirs(img_dir, exist_ok=True)
-for activity in ['Biking', 'VR', 'Hand grip', 'Stroop']:
-    for train_size in [1, 2, 4]:
-        dir_path = f'Train{train_size}-selfnorm_Transformer_custom_ftMS_sl64_ll4_pl64_dm512_nh8_el2_dl2_df2048_fc1_ebtimeF_dtTrue_results_0'
-        pred_path = os.path.join('results', dir_path, 'predicts',f'Subject_5-{activity}.npz')
-        preds = np.load(pred_path)['preds']
-        plt.plot(np.reshape(preds, (-1,)), label=f'Prediction-with{train_size}')
-    ground_truth = np.load(pred_path)['ground_truths']
-    plt.plot(np.reshape(ground_truth, (-1,)), label='Ground truth')
-    plt.legend()
-    plt.title(f'Subject5-{activity}')
-    plt.savefig(os.path.join(img_dir, f'Test-Subject_5-{activity}.png'))
-    plt.close()
-
-
+plot_spectrum(emg_signal)
+# %%
+plot_spectrum(filtered_emg)
 # %%

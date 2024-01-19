@@ -1,0 +1,21 @@
+data:
+  feature: Pulse
+  root: ../data
+  subject_list: [1, 2, 3, 4, 5]
+  activities: ['Stroop', 'VR', 'Hand grip', 'Biking']
+
+model:
+  num_modes: 16
+  layers: [16, 8]
+
+train:
+  lr: 0.0002
+  batch_size: 64
+  epochs: 100
+  save_freq: 1000
+  log_freq: 200
+
+log:
+  project: fatigue
+  entity: hzzheng
+  group: Pulse-encoder
